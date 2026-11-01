@@ -3,6 +3,8 @@ import { defineConfig } from 'vite';
 const SERVER = process.env.LAVOICE_SERVER || 'http://localhost:8787';
 
 export default defineConfig({
+  // VITE_ARTIFACT=1 gera caminhos relativos para publicar como página estática
+  base: process.env.VITE_ARTIFACT === '1' ? './' : '/',
   server: {
     port: 5173,
     host: true,

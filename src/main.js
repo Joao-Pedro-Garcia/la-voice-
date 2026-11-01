@@ -15,6 +15,7 @@ import { Settings, loadProfile, saveProfile } from './save/storage.js';
 import { sanitizeAppearance } from '../shared/sim/room.js';
 import { C } from '../shared/protocol.js';
 import { ARENA } from '../shared/world.js';
+import { ARTIFACT } from './core/env.js';
 
 class App {
   constructor() {
@@ -43,7 +44,7 @@ class App {
       this.world?.setQuality(q);
       this.fx?.setBudget(q.particleBudget);
     };
-    fetch('/api/config', { signal: AbortSignal.timeout(3000) })
+    if (!ARTIFACT) fetch('/api/config', { signal: AbortSignal.timeout(3000) })
       .then((r) => (r.ok ? r.json() : null))
       .then((c) => c && (this.serverCaps = c))
       .catch(() => {});
@@ -100,6 +101,7 @@ class App {
   bindVoice() {
     const v = this.voice;
     v.on('state', (s) => {
+      if (ARTIFACT) return;
       this.hud.setVoiceState(s);
       window.__laVoice.voiceState = s;
     });
@@ -111,7 +113,7 @@ class App {
       if (e.code === 'network') this.hud.toast('Reconhecimento de voz sem internet — digite os comandos.', 'bad');
       else if (e.code === 'not-allowed') this.hud.toast('Permissão de microfone negada.', 'bad');
     });
-    this.hud.setVoiceState(v.status());
+    this.hud.setVoiceState(ARTIFACT ? 'artifact' : v.status());
   }
 
   bindKeys() {
@@ -130,6 +132,11 @@ class App {
 
   async toggleMic() {
     this.audio.init();
+    if (ARTIFACT) {
+      this.hud.toast('Nesta versão online o microfone não está disponível: digite o que você falaria.', 'bad');
+      this.hud.focusCommand();
+      return;
+    }
     const on = await this.voice.toggle();
     this.audio.play(on ? 'mic_on' : 'mic_off');
     if (!on && (this.voice.status() === 'denied' || this.voice.status() === 'unsupported')) this.hud.focusCommand();
@@ -165,7 +172,10 @@ class App {
     this.hud.setProfile(this.profile);
     this.input.enabled = true;
     this.state = 'playing';
-    if (this.settings.get('autoMic') && !this.voice.enabled) this.voice.enable().then((ok) => ok && this.audio.play('mic_on'));
+    if (ARTIFACT) {
+      this.hud.setVoiceState('artifact');
+      setTimeout(() => this.hud.focusCommand(), 300);
+    } else if (this.settings.get('autoMic') && !this.voice.enabled) this.voice.enable().then((ok) => ok && this.audio.play('mic_on'));
   }
 
   startSolo(mode) {

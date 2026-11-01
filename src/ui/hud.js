@@ -15,6 +15,7 @@ const VOICE_STATE = {
   hearing: ['Escutando você…', ''],
   standby: ['Aperte para falar', 'Segure V (ou o botão) e fale'],
   denied: ['Microfone bloqueado', 'Libere nas permissões do navegador ou digite'],
+  artifact: ['Digite seus comandos', 'Microfone indisponível nesta versão online'],
   unsupported: ['Voz indisponível neste navegador', 'Digite os comandos (Chrome/Edge/Safari têm voz)'],
 };
 const TIPS = ['espada de fogo', 'dragão', 'quero voar', 'escudo gigante', 'chuva', 'exército', 'tubarão', 'bomba', 'algo para me proteger', 'tempestade', 'faz de noite', 'lobo de gelo'];
@@ -107,7 +108,7 @@ export class HUD {
     this.vstate = el('div', 'vstate', '<b>Microfone desligado</b><span></span>');
     this.vstate.style.width = '150px';
     this.cmd = el('input', 'cmd');
-    this.cmd.placeholder = 'Digite ou fale: "espada de gelo"…';
+    this.cmd.placeholder = 'Digite o que quer criar: "espada de gelo"…';
     this.cmd.maxLength = 120;
     this.cmd.setAttribute('enterkeyhint', 'send');
     this.cmd.addEventListener('keydown', (e) => {

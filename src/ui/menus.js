@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createCharacterModel } from '../entities/character.js';
 import { ACHIEVEMENTS, xpForLevel } from '../../shared/sim/progression.js';
 import { PRESETS } from '../core/quality.js';
+import { ARTIFACT } from '../core/env.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -72,7 +73,7 @@ export class Menus {
           <button class="btn grow ${mode === 'adventure' ? 'primary' : ''}" data-m="adventure">⚔️ Aventura<br><small style="font-weight:400">ondas de monstros</small></button>
           <button class="btn grow ${mode === 'creative' ? 'primary' : ''}" data-m="creative">🎨 Criativo<br><small style="font-weight:400">sem inimigos</small></button>
         </div></div>
-      <p class="muted">Dica: depois de entrar, toque no microfone e fale <b>"espada de fogo"</b>, <b>"dragão"</b>, <b>"quero voar"</b> ou descreva algo: <b>"um animal enorme que voa"</b>.</p>
+      <p class="muted">Dica: depois de entrar, ${ARTIFACT ? 'digite' : 'toque no microfone e fale'} <b>"espada de fogo"</b>, <b>"dragão"</b>, <b>"quero voar"</b> ou descreva algo: <b>"um animal enorme que voa"</b>.</p>
       <div class="row" style="margin-top:14px"><button class="btn grow" data-a="back">Voltar</button><button class="btn primary grow" data-a="go">Entrar no mundo</button></div></div>`);
     s.querySelectorAll('[data-m]').forEach((b) =>
       b.addEventListener('click', () => {
@@ -86,6 +87,15 @@ export class Menus {
 
   // ------------------------------------------------------------------ multiplayer
   multiplayer(prefillCode = '') {
+    if (ARTIFACT) {
+      const s = this.open(`<div class="card"><h2>🌐 Multiplayer</h2>
+        <p>O multiplayer precisa do servidor do jogo, que não roda nesta versão online.</p>
+        <p class="muted">Para jogar com amigos, rode o projeto do repositório com <b>npm install</b>, <b>npm run build</b> e <b>npm start</b>, e compartilhe o código da sala. O modo solo daqui tem todo o resto do jogo.</p>
+        <div class="row"><button class="btn grow" data-a="back">Voltar</button><button class="btn primary grow" data-a="solo">Jogar solo</button></div></div>`);
+      this.click(s, '[data-a=back]', () => this.main());
+      this.click(s, '[data-a=solo]', () => this.soloSetup());
+      return;
+    }
     const p = this.app.profile;
     const s = this.open(`<div class="card"><h2>🌐 Multiplayer</h2>
       <div class="field"><label>Seu nome</label><input class="input" data-f="name" maxlength="20" value="${esc(p.name)}"></div>
@@ -252,6 +262,8 @@ export class Menus {
       body = sel('quality', 'Qualidade', [['auto', 'Automática'], ...Object.entries(PRESETS).map(([k, v]) => [k, v.label])]) + tog('adaptive', 'Ajuste automático pelo FPS real') + tog('shadows', 'Sombras') + tog('showFps', 'Mostrar FPS') + sel('dayLength', 'Duração do dia', [[240, '4 min'], [480, '8 min'], [960, '16 min'], [0, 'Parado']]) + (info ? `<p class="muted">Agora: ${info.fps} FPS · perfil ${info.tier} · resolução ×${(info.scale || 1).toFixed(2)}</p>` : '');
     } else if (tab === 'audio') {
       body = rng('volMaster', 'Volume geral', 0, 1, 0.05) + rng('volSfx', 'Efeitos', 0, 1, 0.05) + rng('volAmbient', 'Ambiente', 0, 1, 0.05) + tog('music', 'Música de fundo') + rng('volMusic', 'Volume da música', 0, 1, 0.05);
+    } else if (tab === 'voice' && ARTIFACT) {
+      body = '<p class="muted">Nesta versão online o navegador não libera o microfone para a página, então os comandos são digitados. O interpretador é o mesmo do jogo completo: frases, sinônimos, português e inglês. Rodando o projeto localmente (npm start), a voz funciona.</p>';
     } else if (tab === 'voice') {
       body = sel('voiceLang', 'Idioma da fala', [['pt-BR', 'Português (Brasil)'], ['pt-PT', 'Português (Portugal)'], ['en-US', 'English (US)']]) + sel('voiceMode', 'Modo', [['continuous', 'Sempre ouvindo'], ['push', 'Aperte para falar (V)']]) + sel('recognizer', 'Reconhecedor', [['auto', 'Automático'], ['browser', 'Navegador'], ['server', 'Servidor (se configurado)']]) + rng('micSensitivity', 'Sensibilidade do microfone', 0, 1, 0.05) + tog('autoMic', 'Ligar microfone ao entrar') + `<div class="setting"><span>Teste do microfone</span><button class="btn small" data-a="mictest">Testar</button></div><div class="bar en"><i class="micmeter" style="transform:scaleX(0)"></i></div><p class="muted miclabel">A detecção de voz filtra ruídos e os sons do próprio jogo. Se não houver reconhecimento por voz no navegador, digite os comandos.</p>`;
     } else {

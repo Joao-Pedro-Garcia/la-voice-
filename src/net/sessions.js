@@ -5,6 +5,7 @@
 import { Room, TICK_DT } from '../../shared/sim/room.js';
 import { C, S, PROTOCOL_VERSION } from '../../shared/protocol.js';
 import { saveProfile, profileToken, saveSession, loadSession } from '../save/storage.js';
+import { ARTIFACT } from '../core/env.js';
 
 class Emitter {
   constructor() {
@@ -27,7 +28,7 @@ export function makeRemoteInterpreter() {
   return async (text, { level }) => {
     const key = `${text.toLowerCase().trim()}|${level}`;
     if (cache.has(key)) return cache.get(key);
-    if (available === false || !navigator.onLine) return null;
+    if (ARTIFACT || available === false || !navigator.onLine) return null;
     try {
       if (available === null) {
         const cfg = await fetch('/api/config', { signal: AbortSignal.timeout(2500) }).then((r) => (r.ok ? r.json() : null));
