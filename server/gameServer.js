@@ -5,6 +5,9 @@ import { WebSocketServer } from 'ws';
 import { Room, sanitizeAppearance } from '../shared/sim/room.js';
 import { C, S, TICK_RATE, RECONNECT_GRACE_MS, PROTOCOL_VERSION, makeRoomCode, isValidRoomCode } from '../shared/protocol.js';
 import { defaultProfile } from '../shared/sim/progression.js';
+import { originAllowed, clientIp } from './http-utils.js';
+
+const MAX_CONN_PER_IP = Number(process.env.LAVOICE_MAX_CONN_PER_IP || 12);
 
 const MAX_ROOMS = Number(process.env.LAVOICE_MAX_ROOMS || 200);
 
@@ -21,7 +24,19 @@ export class GameServer {
   }
 
   attach(httpServer, path = '/ws') {
-    this.wss = new WebSocketServer({ server: httpServer, path, maxPayload: 16 * 1024 });
+    this.connPerIp = new Map();
+    this.wss = new WebSocketServer({
+      server: httpServer,
+      path,
+      maxPayload: 16 * 1024,
+      perMessageDeflate: false,
+      // só aceita conexões vindas do próprio site e limita conexões por IP
+      verifyClient: ({ req }, done) => {
+        if (!originAllowed(req)) return done(false, 403, 'Origem não permitida');
+        if ((this.connPerIp.get(clientIp(req)) || 0) >= MAX_CONN_PER_IP) return done(false, 429, 'Conexões demais');
+        done(true);
+      },
+    });
     this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
     let last = performance.now();
     this.interval = setInterval(() => {
@@ -60,7 +75,14 @@ export class GameServer {
     return { rooms: this.rooms.size, players: [...this.rooms.values()].reduce((s, r) => s + r.playerCount, 0) };
   }
 
-  onConnection(ws) {
+  onConnection(ws, req) {
+    const ip = req ? clientIp(req) : '?';
+    this.connPerIp.set(ip, (this.connPerIp.get(ip) || 0) + 1);
+    ws.on('close', () => {
+      const n = (this.connPerIp.get(ip) || 1) - 1;
+      if (n <= 0) this.connPerIp.delete(ip);
+      else this.connPerIp.set(ip, n);
+    });
     const conn = { ws, profileToken: null, profile: null, playerId: null, roomCode: null, sessionToken: null };
     ws.isAlive = true;
     ws.on('pong', () => (ws.isAlive = true));

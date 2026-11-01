@@ -2,6 +2,8 @@
 
 Jogo 3D no navegador em que **tudo o que você fala vira algo no mundo**. Diga "espada de fogo", "dragão", "quero voar", "chuva" ou descreva algo ("um animal enorme que consiga voar") e o jogo interpreta a fala e cria a arma, a criatura, o poder ou o clima correspondente. Há combate, ondas de monstros, progressão e multiplayer online.
 
+> **Publicar pelo celular (Android):** siga [docs/PUBLICAR_PELO_ANDROID.md](docs/PUBLICAR_PELO_ANDROID.md). O projeto já vem configurado para o Render (`render.yaml`), com HTTPS, permissão de microfone e multiplayer.
+
 ## Como executar
 
 Requisitos: Node.js 20 ou superior.
@@ -42,7 +44,7 @@ O modo **Aventura** traz ondas de monstros cada vez mais fortes. O modo **Criati
 
 A voz passa por cinco camadas:
 
-1. **Reconhecimento** (áudio → texto), em `src/voice/`:
+1. **Reconhecimento** (áudio → texto), em `src/voice/`. No **celular** o modo automático é **"tocar para falar"**: cada toque no microfone ouve uma frase, e o jogo não abre um segundo fluxo de microfone (isso bloquearia o reconhecedor do Android/iPhone). No **computador** o modo automático fica sempre ouvindo, com o detector de voz próprio.
    - **Navegador (padrão):** usa a Web Speech API, disponível no Chrome, Edge e Safari. No Chrome o áudio é processado pelo serviço do Google; no Safari pode ser processado no próprio aparelho.
    - **Servidor (opcional):** o cliente grava o trecho detectado e envia para `/api/stt`. O servidor repassa a um serviço de transcrição no formato `/audio/transcriptions`, como um servidor whisper.cpp local. Configure:
      ```bash
@@ -89,11 +91,12 @@ Tudo é procedural (modelos, texturas, animações e sons), então não há arqu
 ## Testes
 
 ```bash
-npm test           # 92 testes: interpretação, catálogo, geração, combate, IA, progressão, persistência, VAD,
+npm test           # 105 testes: interpretação, catálogo, geração, combate, IA, progressão, persistência, VAD,
                    # multiplayer real (WebSocket), reconexão e API HTTP
-npm run build && npm run test:e2e   # 23 verificações no Chromium: menu, mundo, permissão de microfone
+npm run build && npm run test:e2e   # 27 verificações no Chromium: menu, mundo, permissão de microfone
                                      # (dispositivo falso), armas, criaturas, habilidades, clima, pausa,
-                                     # salvamento, multiplayer com 2 abas, reconexão, celular e console sem erros
+                                     # salvamento, multiplayer com 2 abas, reconexão, celular, Android
+                                     # "tocar para falar" (reconhecedor substituído no teste) e console sem erros
 ```
 
 As capturas de tela do e2e ficam em `test-results/`.

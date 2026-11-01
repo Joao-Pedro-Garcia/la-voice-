@@ -13,8 +13,9 @@ const VOICE_STATE = {
   requesting: ['Pedindo permissão…', 'Autorize o microfone no navegador'],
   listening: ['Ouvindo', 'Fale um objeto, animal ou poder'],
   hearing: ['Escutando você…', ''],
+  tap: ['Toque para falar', 'Toque no microfone e diga uma frase'],
   standby: ['Aperte para falar', 'Segure V (ou o botão) e fale'],
-  denied: ['Microfone bloqueado', 'Libere nas permissões do navegador ou digite'],
+  denied: ['Microfone bloqueado', 'Permita o microfone no cadeado ao lado do endereço'],
   artifact: ['Digite seus comandos', 'Microfone indisponível nesta versão online'],
   unsupported: ['Voz indisponível neste navegador', 'Digite os comandos (Chrome/Edge/Safari têm voz)'],
 };

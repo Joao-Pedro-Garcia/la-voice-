@@ -5,6 +5,8 @@
 //   LAVOICE_STT_URL      → (opcional) ativa reconhecimento de fala no servidor
 //   LAVOICE_DATA         → arquivo de perfis (padrão data/profiles.json)
 import http from 'node:http';
+import zlib from 'node:zlib';
+import { clientIp, securityHeaders, httpsRedirect } from './http-utils.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,6 +70,7 @@ export function createServer({ port = Number(process.env.PORT || 8787), dataFile
   const interpCache = new LRUCache(1000);
   const game = new GameServer({ store, remoteInterpret, log, graceMs });
 
+  const gzCache = new Map(); // arquivo -> Buffer comprimido (assets são imutáveis)
   const json = (res, status, body) => {
     res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     res.end(JSON.stringify(body));
@@ -75,7 +78,14 @@ export function createServer({ port = Number(process.env.PORT || 8787), dataFile
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x');
-    const ip = req.socket.remoteAddress || '?';
+    const ip = clientIp(req);
+    for (const [k, v] of Object.entries(securityHeaders(req))) res.setHeader(k, v);
+    // atrás do proxy do Render: tudo que chegar por HTTP vai para HTTPS (o microfone exige HTTPS)
+    const redirect = httpsRedirect(req);
+    if (redirect) {
+      res.writeHead(301, { location: redirect });
+      return res.end();
+    }
     try {
       if (url.pathname === '/api/health') return json(res, 200, { ok: true, ...game.stats() });
       if (url.pathname === '/api/config') return json(res, 200, { llm: !!remoteInterpret, stt: !!stt, multiplayer: true });
@@ -111,10 +121,24 @@ export function createServer({ port = Number(process.env.PORT || 8787), dataFile
         return res.end('LA VOICE: execute "npm run build" para gerar o cliente (ou use "npm run dev").');
       }
       const ext = path.extname(file);
-      res.writeHead(200, {
+      const immutable = file.includes(`${path.sep}assets${path.sep}`);
+      const headers = {
         'content-type': MIME[ext] || 'application/octet-stream',
-        'cache-control': file.includes(`${path.sep}assets${path.sep}`) ? 'public, max-age=31536000, immutable' : 'no-cache',
-      });
+        'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
+        vary: 'Accept-Encoding',
+      };
+      // compressão gzip para JS/CSS/HTML (reduz ~1,3 MB para ~0,4 MB — importante no 4G)
+      const compressible = ['.js', '.css', '.html', '.svg', '.json', '.webmanifest'].includes(ext);
+      if (compressible && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+        let gz = gzCache.get(file);
+        if (!gz) {
+          gz = zlib.gzipSync(fs.readFileSync(file), { level: 9 });
+          if (immutable) gzCache.set(file, gz);
+        }
+        res.writeHead(200, { ...headers, 'content-encoding': 'gzip', 'content-length': gz.length });
+        return res.end(gz);
+      }
+      res.writeHead(200, headers);
       fs.createReadStream(file).pipe(res);
     } catch (err) {
       if (err.message === 'too_large') return json(res, 413, { error: 'too_large' });
@@ -133,7 +157,7 @@ export function createServer({ port = Number(process.env.PORT || 8787), dataFile
     server,
     game,
     store,
-    listen: () => new Promise((resolve) => server.listen(port, () => resolve(server.address().port))),
+    listen: () => new Promise((resolve) => server.listen(port, process.env.HOST || '0.0.0.0', () => resolve(server.address().port))),
     close: shutdown,
   };
 }

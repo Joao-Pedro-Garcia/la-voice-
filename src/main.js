@@ -109,9 +109,16 @@ class App {
     v.on('interim', (d) => d.text && this.hud.showInterim(d.text));
     v.on('transcript', (d) => this.command(d.text, d.source));
     v.on('rejected', (d) => console.info('[voz] descartado:', d.reason, d.text));
+    v.on('nospeech', () => this.hud.toast('Não ouvi nada. Toque no microfone e fale logo em seguida.', 'info'));
     v.on('error', (e) => {
-      if (e.code === 'network') this.hud.toast('Reconhecimento de voz sem internet — digite os comandos.', 'bad');
-      else if (e.code === 'not-allowed') this.hud.toast('Permissão de microfone negada.', 'bad');
+      const msg = {
+        network: 'O reconhecimento de voz do navegador precisa de internet. Verifique a conexão ou digite os comandos.',
+        'not-allowed': 'Permissão de microfone negada: toque no cadeado ao lado do endereço → Permissões → Microfone → Permitir.',
+        'service-not-allowed': 'O reconhecimento de voz está desativado no aparelho. No iPhone, ative Ajustes → Geral → Teclado → Ditado.',
+        'audio-capture': 'O microfone está em uso por outro app ou não foi encontrado. Feche outros apps que usam o microfone.',
+        'language-not-supported': 'Idioma de voz não suportado neste aparelho. Troque em Configurações → Voz.',
+      }[e.code];
+      if (msg) this.hud.toast(msg, 'bad');
     });
     this.hud.setVoiceState(ARTIFACT ? 'artifact' : v.status());
   }
@@ -137,9 +144,25 @@ class App {
       this.hud.focusCommand();
       return;
     }
-    const on = await this.voice.toggle();
+    const v = this.voice;
+    if (v.mode === 'tap') {
+      // celular: cada toque ouve uma frase (o gesto do toque libera o microfone)
+      const wasActive = v.engine?.active;
+      const ok = await v.tapTalk();
+      if (ok && !wasActive) this.audio.play('mic_on');
+      if (!ok) this.voiceHelp();
+      return;
+    }
+    const on = await v.toggle();
     this.audio.play(on ? 'mic_on' : 'mic_off');
-    if (!on && (this.voice.status() === 'denied' || this.voice.status() === 'unsupported')) this.hud.focusCommand();
+    if (!on && (v.status() === 'denied' || v.status() === 'unsupported')) this.voiceHelp();
+  }
+
+  voiceHelp() {
+    const st = this.voice.status();
+    if (st === 'unsupported') this.hud.toast('Este navegador não reconhece voz. Use o Chrome no Android ou o Safari no iPhone — ou digite os comandos.', 'bad');
+    else if (st === 'denied') this.hud.toast('Microfone bloqueado: toque no cadeado ao lado do endereço → Permissões → Microfone → Permitir.', 'bad');
+    this.hud.focusCommand();
   }
 
   // Fala reconhecida ou texto digitado → servidor/sala interpreta e executa
@@ -175,6 +198,9 @@ class App {
     if (ARTIFACT) {
       this.hud.setVoiceState('artifact');
       setTimeout(() => this.hud.focusCommand(), 300);
+    } else if (this.voice.mode === 'tap') {
+      this.voice.emitState();
+      this.hud.toast('Toque no microfone e diga o que quer criar.', 'info');
     } else if (this.settings.get('autoMic') && !this.voice.enabled) this.voice.enable().then((ok) => ok && this.audio.play('mic_on'));
   }
 

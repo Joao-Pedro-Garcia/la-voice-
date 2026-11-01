@@ -31,7 +31,8 @@ export class WebSpeechRecognizer {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const r = new SR();
     r.lang = this.lang;
-    r.continuous = true;
+    // modo "uma frase" (tocar para falar, ideal no celular) ou contínuo
+    r.continuous = !this.once;
     r.interimResults = true;
     r.maxAlternatives = 3;
     r.onresult = (ev) => {
@@ -44,18 +45,29 @@ export class WebSpeechRecognizer {
         } else this.emit('interim', { text: alts[0].text });
       }
     };
+    r.onspeechstart = () => this.emit('speechstart');
+    r.onspeechend = () => this.emit('speechend');
+    r.onaudiostart = () => this.emit('listening');
     r.onerror = (ev) => {
-      if (ev.error === 'no-speech' || ev.error === 'aborted') return;
+      if (ev.error === 'aborted') return;
+      if (ev.error === 'no-speech') {
+        if (this.once) this.emit('nospeech');
+        return;
+      }
       this.failures++;
       this.emit('error', { code: ev.error });
-      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') this.active = false;
+      // sem permissão, sem microfone livre ou falhas de rede repetidas: para de tentar
+      if (['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported'].includes(ev.error) || this.failures >= 6) this.active = false;
     };
     r.onend = () => {
       // o reconhecimento contínuo para sozinho de tempos em tempos: reinicia
-      if (this.active) {
+      if (this.active && !this.once) {
         const delay = Math.min(8000, this.restartDelay * Math.pow(2, Math.min(this.failures, 5)));
         setTimeout(() => this.active && this.safeStart(), delay);
-      } else this.emit('stopped');
+      } else {
+        this.active = false;
+        this.emit('stopped');
+      }
     };
     return r;
   }
@@ -69,8 +81,9 @@ export class WebSpeechRecognizer {
     }
   }
 
-  start() {
+  start({ once = false } = {}) {
     if (this.active) return;
+    this.once = once;
     this.active = true;
     this.safeStart();
   }

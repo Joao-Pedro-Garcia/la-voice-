@@ -1,0 +1,30 @@
+# Blueprint do Render para o LA VOICE (jogo + servidor multiplayer num único serviço).
+# Render → New → Blueprint → escolha este repositório. O HTTPS é automático (*.onrender.com).
+services:
+  - type: web
+    name: la-voice
+    runtime: node
+    plan: free # gratuito: dorme após 15 min sem jogadores; sem disco persistente
+    region: oregon
+    # --include=dev garante o Vite (necessário para compilar o cliente)
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit # publica de novo a cada commit no branch escolhido
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: LAVOICE_TRUST_PROXY
+        value: "1" # o Render fica na frente com HTTPS; confia no X-Forwarded-*
+      - key: ANTHROPIC_API_KEY
+        sync: false # opcional: deixe em branco para usar só o interpretador local
+      - key: LAVOICE_STT_URL
+        sync: false # opcional: serviço de transcrição para navegadores sem voz (ex.: Firefox)
+      - key: LAVOICE_STT_KEY
+        sync: false # opcional
+    # Para guardar o progresso do multiplayer entre reinícios, troque para um plano pago,
+    # descomente o disco abaixo e defina LAVOICE_DATA=/var/data/profiles.json:
+    # disk:
+    #   name: la-voice-data
+    #   mountPath: /var/data
+    #   sizeGB: 1

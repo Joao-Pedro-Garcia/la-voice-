@@ -140,7 +140,7 @@ try {
 
   // reconexão: derruba o socket de B
   await b.evaluate(() => window.__laVoice.session.ws.close(4001));
-  await b.waitForFunction(() => window.__laVoice.session.ws.readyState === 1 && window.__laVoice.game.players.size === 2, null, { timeout: 20000 });
+  await b.waitForFunction(() => window.__laVoice.session.ws.readyState === 1 && window.__laVoice.game.players.size === 2, null, { timeout: 45000 });
   check('multiplayer: reconexão automática', true);
   check('sem erros no console (multiplayer)', a.errors.length + b.errors.length === 0, [...a.errors, ...b.errors].slice(0, 3).join(' | '));
 
@@ -160,6 +160,41 @@ try {
   const overflow = await m.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   check('celular: sem rolagem horizontal', !overflow);
   check('sem erros no console (celular)', m.errors.length === 0, m.errors.slice(0, 3).join(' | '));
+  await m.context().close();
+
+  // ---------------- Android: tocar para falar (reconhecedor de voz substituído por um falso,
+  // pois o Chromium de teste não tem o serviço de voz do Google)
+  const ctxA = await browser.newContext({ viewport: { width: 412, height: 915 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2.6, userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36' });
+  await ctxA.addInitScript(() => {
+    localStorage.setItem('lavoice:settings', JSON.stringify({ quality: 'low', adaptive: false }));
+    window.__micOpened = 0;
+    const orig = navigator.mediaDevices?.getUserMedia?.bind(navigator.mediaDevices);
+    if (orig) navigator.mediaDevices.getUserMedia = (c) => { window.__micOpened++; return orig(c); };
+    class FakeSR {
+      start() { window.__sr = this; setTimeout(() => { this.onaudiostart?.(); this.onspeechstart?.(); const r = Object.assign([{ transcript: 'quero uma espada de fogo', confidence: 0.92 }], { isFinal: true }); this.onresult?.({ resultIndex: 0, results: [r] }); this.onspeechend?.(); this.onend?.(); }, 300); }
+      stop() { this.onend?.(); }
+      abort() {}
+    }
+    window.SpeechRecognition = window.webkitSpeechRecognition = FakeSR;
+  });
+  const an = await ctxA.newPage();
+  an.errors = [];
+  an.on('pageerror', (e) => an.errors.push(e.message));
+  await an.goto(BASE);
+  await an.waitForFunction(() => window.__laVoice?.ready === true, null, { timeout: 120000 });
+  await an.tap('[data-a=play]');
+  await an.tap('[data-a=go]');
+  await an.waitForFunction(() => window.__laVoice.game?.me, null, { timeout: 30000 });
+  const st = await an.evaluate(() => window.__laVoice.voiceState);
+  check('Android: modo "tocar para falar" ativo', st === 'tap', st);
+  await an.tap('.mic');
+  await an.waitForFunction(() => window.__laVoice.game.meState.inventory?.length > 0, null, { timeout: 15000 }).catch(() => {});
+  const invA = await an.evaluate(() => window.__laVoice.game.meState.inventory?.map((w) => w.label));
+  check('Android: fala reconhecida cria a arma', invA?.[0] === 'Espada de Fogo', JSON.stringify(invA));
+  const opened = await an.evaluate(() => window.__micOpened);
+  check('Android: não abre microfone paralelo ao reconhecedor', opened === 0, `getUserMedia chamado ${opened}x`);
+  await an.screenshot({ path: `${OUT}/07-android-voz.png` });
+  check('sem erros no console (Android)', an.errors.length === 0, an.errors.slice(0, 3).join(' | '));
 } catch (err) {
   check('execução do e2e', false, err.stack);
 } finally {

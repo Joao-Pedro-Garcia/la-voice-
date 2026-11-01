@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS = {
   volAmbient: 0.6,
   music: true,
   voiceLang: 'pt-BR',
-  voiceMode: 'continuous', // continuous | push
+  voiceMode: 'auto', // auto (celular: tocar para falar; computador: contínuo) | continuous | push | tap
   recognizer: 'auto', // auto | browser | server
   micSensitivity: 0.5,
   autoMic: true,
