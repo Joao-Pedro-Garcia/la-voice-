@@ -4,3 +4,4 @@ data/*.json
 test-results
 *.log
 .env
+tests/e2e/tmp

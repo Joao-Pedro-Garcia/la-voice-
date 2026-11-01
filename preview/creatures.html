@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LA VOICE — Creature preview</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #9fc7e8; overflow: hidden; font-family: system-ui, sans-serif; }
+  canvas { display: block; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+  .lbl { position: absolute; transform: translate(-50%, 0); color: #fff; font-size: 12px; text-shadow: 0 1px 2px #000; white-space: nowrap; text-align: center; }
+  .lbl small { opacity: 0.75; font-size: 10px; }
+  #ui { position: fixed; top: 8px; left: 8px; background: rgba(0,0,0,.55); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+  #ui button { margin: 2px; }
+</style>
+</head>
+<body>
+<div id="labels"></div>
+<div id="ui"><b>Creatures</b> anim: <span id="anim">idle</span><br/>
+  <span id="btns"></span></div>
+<script type="module" src="./creatures.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>LA VOICE — preview do mundo</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 8px; top: 8px; color: #fff; font: 12px/1.4 monospace; background: rgba(0,0,0,.45); padding: 6px 8px; border-radius: 6px; pointer-events: none; white-space: pre; }
+  #load { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; background: #0b1220; }
+  #bar { position: fixed; right: 8px; top: 8px; display: flex; gap: 4px; flex-wrap: wrap; max-width: 60vw; justify-content: flex-end; }
+  #bar button { background: rgba(0,0,0,.5); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 4px; padding: 3px 6px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="load">Carregando…</div>
+<div id="hud"></div>
+<div id="bar"></div>
+<script type="module" src="./world.js"></script>
+</body>
+</html>

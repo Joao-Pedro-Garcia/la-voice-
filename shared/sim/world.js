@@ -734,7 +734,7 @@ export class World {
           spawned++;
         }
         entry.count = spawned;
-        this.progress(playerId, { type: 'create', category: 'creature', key: `creature:${s.variant || s.species}`, element: s.element, species: s.species, count: spawned, rarity: s.rarity });
+        this.progress(playerId, { type: 'create', category: 'creature', key: `creature:${s.variant || s.species}`, element: s.element, species: s.species, count: spawned });
       } else if (m.category === 'ability') {
         const res = castAbility(this, p, s);
         entry.ok = res.ok;

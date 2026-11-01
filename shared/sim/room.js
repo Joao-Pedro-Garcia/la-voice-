@@ -194,11 +194,17 @@ export class Room {
     const w = this.world;
     const text = String(msg.text || '').slice(0, 200).trim();
     if (!text) return;
-    if (w.time - m.lastVoiceAt < VOICE_MIN_INTERVAL) {
-      this.sendTo(playerId, { t: S.EVENTS, list: [{ type: 'manifest', playerId, text, understood: false, message: 'Calma! Fale de novo em um instante.', entries: [] }] });
-      return;
+    // falas muito próximas são enfileiradas (não descartadas); excesso de fila é ignorado
+    const wait = VOICE_MIN_INTERVAL - (w.time - m.lastVoiceAt);
+    if (wait > 0) {
+      if ((m.queued || 0) >= 3) return;
+      m.queued = (m.queued || 0) + 1;
+      m.lastVoiceAt += VOICE_MIN_INTERVAL;
+      await new Promise((r) => setTimeout(r, wait * 1000));
+      m.queued--;
+      if (!this.members.has(playerId)) return;
     }
-    m.lastVoiceAt = w.time;
+    m.lastVoiceAt = Math.max(m.lastVoiceAt, w.time);
     const level = m.profile.level;
     let interp = interpret(text, { level, rand: w.rand });
     if ((!interp.understood || interp.confidence < 0.5) && this.remoteInterpret && m.pending < 2) {
